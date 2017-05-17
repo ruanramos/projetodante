@@ -4,13 +4,19 @@ using UnityEngine;
 
 public class CharacterActions : MonoBehaviour {
 
-    float speed, teleport;
-    public GameObject prefab;
-
+    public bool spearOn, onMeleeCd;
+    float speed, teleport, turnSpeed, countMelee;
+    GameObject prefab;
+    public GameObject meleeHit;
+    private Camera mainCamera;
 
 	void Start () {
+        this.spearOn = true;
+        this.onMeleeCd = false;
+        this.countMelee = 0.2f;
         this.speed = 5f;
         this.teleport = 100f;
+        this.turnSpeed = 100000f;
         prefab = Resources.Load("Prefabs/Projectile") as GameObject;
 	}
 	
@@ -24,13 +30,19 @@ public class CharacterActions : MonoBehaviour {
         else if (Input.GetKey(KeyCode.S))
             this.transform.position += new Vector3(0, -speed, 0) * Time.deltaTime;
         if (Input.GetKey(KeyCode.W) && Input.GetKey(KeyCode.A))
-            this.transform.position += ((new Vector3(-speed, speed , 0)).normalized) * speed * Time.deltaTime;
+            this.transform.position += new Vector3(-speed, speed, 0) * Time.deltaTime;
         if (Input.GetKey(KeyCode.W) && Input.GetKey(KeyCode.D))
-            this.transform.position += ((new Vector3(speed, speed, 0)).normalized) * speed * Time.deltaTime;
+            this.transform.position += new Vector3(speed, speed, 0) * Time.deltaTime;
         if (Input.GetKey(KeyCode.S) && Input.GetKey(KeyCode.D))
-            this.transform.position += ((new Vector3(speed, -speed, 0)).normalized) * speed * Time.deltaTime;
+            this.transform.position += new Vector3(speed, -speed, 0) * Time.deltaTime;
         if (Input.GetKey(KeyCode.S) && Input.GetKey(KeyCode.A))
-            this.transform.position += ((new Vector3(-speed, -speed, 0)).normalized) * speed * Time.deltaTime;
+            this.transform.position += new Vector3(-speed, -speed, 0) * Time.deltaTime;
+
+        // This part of the code make the character look at the mouse position
+        Vector2 lookToWard = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        float targetAngle = Mathf.Atan2(lookToWard.y, lookToWard.x) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, 0, targetAngle), turnSpeed * Time.deltaTime);
+
     }
 
     void Teleporting () {
@@ -53,17 +65,38 @@ public class CharacterActions : MonoBehaviour {
     }
 
     void Shooting() {
-        if (Input.GetMouseButtonDown(0)) {
-            GameObject projectile = Instantiate(prefab) as GameObject;
-            projectile.transform.position = this.transform.position + Camera.main.transform.forward * 2;
-            Rigidbody2D rb = projectile.GetComponent<Rigidbody2D> ();
-            rb.velocity = Camera.main.transform.position * 100;
+        if (Input.GetMouseButtonDown(1) && spearOn) {
+            GameObject projectile = Instantiate(prefab, this.transform.position, this.transform.rotation) as GameObject;
+            spearOn = false;          
+        }
+    }
+
+    void Melee()
+    {
+        if (Input.GetMouseButtonDown(0) && !onMeleeCd)
+        {
+            meleeHit.GetComponent<BoxCollider2D>().enabled = true;
+            onMeleeCd = true;
+        }
+
+        if (onMeleeCd && countMelee > 0)
+        {
+            countMelee -= Time.deltaTime;
+            Debug.Log(countMelee);
+        }
+
+        if (countMelee <= 0)
+        {
+            countMelee = 2.0f;
+            onMeleeCd = false;
+            meleeHit.GetComponent<BoxCollider2D>().enabled = false;
         }
 
     }
 
 	void Update () {
         Moving ();
+        Melee();
         Teleporting ();
         Shooting ();
 	}
